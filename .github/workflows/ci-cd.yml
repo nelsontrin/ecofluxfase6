@@ -93,18 +93,16 @@ jobs:
           ECOFLUX_IMAGE: ${{ needs.publish-image.outputs.image }}
           APP_DIR: ${{ secrets.APP_DIR }}
           APP_PORT: ${{ secrets.APP_PORT }}
-          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
           COMPOSE_PROJECT_NAME: ${{ secrets.COMPOSE_PROJECT_NAME }}
-          ORACLE_SYS_PASSWORD: ${{ secrets.ORACLE_SYS_PASSWORD }}
-          ORACLE_USER: ${{ secrets.ORACLE_USER }}
-          ORACLE_PASSWORD: ${{ secrets.ORACLE_PASSWORD }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: ECOFLUX_IMAGE,APP_DIR,APP_PORT,ORACLE_PORT,COMPOSE_PROJECT_NAME,ORACLE_SYS_PASSWORD,ORACLE_USER,ORACLE_PASSWORD,JWT_SECRET,GITHUB_TOKEN
+          envs: ECOFLUX_IMAGE,APP_DIR,APP_PORT,COMPOSE_PROJECT_NAME,DB_USER,DB_PASSWORD,JWT_SECRET,GITHUB_TOKEN
           script_stop: true
           script: |
             set -eu
@@ -115,11 +113,9 @@ jobs:
             printf '%s\n' \
               "ECOFLUX_IMAGE=$ECOFLUX_IMAGE" \
               "APP_PORT=$APP_PORT" \
-              "ORACLE_PORT=$ORACLE_PORT" \
               "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
-              "ORACLE_SYS_PASSWORD=$ORACLE_SYS_PASSWORD" \
-              "ORACLE_USER=$ORACLE_USER" \
-              "ORACLE_PASSWORD=$ORACLE_PASSWORD" \
+              "DB_USER=$DB_USER" \
+              "DB_PASSWORD=$DB_PASSWORD" \
               "JWT_SECRET=$JWT_SECRET" > .env
             echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose pull ecoflux-app
@@ -139,18 +135,16 @@ jobs:
           ECOFLUX_IMAGE: ${{ needs.publish-image.outputs.image }}
           APP_DIR: ${{ secrets.APP_DIR }}
           APP_PORT: ${{ secrets.APP_PORT }}
-          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
           COMPOSE_PROJECT_NAME: ${{ secrets.COMPOSE_PROJECT_NAME }}
-          ORACLE_SYS_PASSWORD: ${{ secrets.ORACLE_SYS_PASSWORD }}
-          ORACLE_USER: ${{ secrets.ORACLE_USER }}
-          ORACLE_PASSWORD: ${{ secrets.ORACLE_PASSWORD }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: ECOFLUX_IMAGE,APP_DIR,APP_PORT,ORACLE_PORT,COMPOSE_PROJECT_NAME,ORACLE_SYS_PASSWORD,ORACLE_USER,ORACLE_PASSWORD,JWT_SECRET,GITHUB_TOKEN
+          envs: ECOFLUX_IMAGE,APP_DIR,APP_PORT,COMPOSE_PROJECT_NAME,DB_USER,DB_PASSWORD,JWT_SECRET,GITHUB_TOKEN
           script_stop: true
           script: |
             set -eu
@@ -161,11 +155,9 @@ jobs:
             printf '%s\n' \
               "ECOFLUX_IMAGE=$ECOFLUX_IMAGE" \
               "APP_PORT=$APP_PORT" \
-              "ORACLE_PORT=$ORACLE_PORT" \
               "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
-              "ORACLE_SYS_PASSWORD=$ORACLE_SYS_PASSWORD" \
-              "ORACLE_USER=$ORACLE_USER" \
-              "ORACLE_PASSWORD=$ORACLE_PASSWORD" \
+              "DB_USER=$DB_USER" \
+              "DB_PASSWORD=$DB_PASSWORD" \
               "JWT_SECRET=$JWT_SECRET" > .env
             echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose pull ecoflux-app

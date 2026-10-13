@@ -12,9 +12,9 @@
 
 O EcoFlux é uma API de gestão automatizada de resíduos. A aplicação registra pontos de coleta, descartes e coletas, mantendo alertas de capacidade para apoiar decisões operacionais ligadas à sustentabilidade.
 
-A versão utilizada nesta entrega é a aplicação Java Spring Boot com Oracle Database XE. O projeto possui migrações Flyway, autenticação JWT e regras de negócio para impedir inconsistências no inventário.
+A solução utiliza Java Spring Boot, autenticação JWT, migrações Flyway e H2 persistente em arquivo. O H2 foi escolhido para a demonstração DevOps porque o enunciado exige um serviço de banco no Compose, mas não exige Oracle. O banco fica em volume Docker para manter os dados entre reinícios.
 
-## 2. Arquitetura da solução
+## 2. Arquitetura
 
 ```text
 GitHub
@@ -23,133 +23,108 @@ GitHub
           |
           +--> Build + testes com Maven Wrapper
           |
-          +--> Imagem Docker publicada no GHCR
+          +--> Imagem Docker no GHCR
           |
-          +--> Staging via SSH + Docker Compose
-          |
-          +--> Produção via tag + ambiente protegido + Docker Compose
-
-Cada ambiente:
-  EcoFlux API  <---- rede Docker ---->  Oracle XE
-                         |
-                    volume persistente
+          +--> VM Azure
+                  |
+                  +--> staging: porta 8080, projeto ecoflux-staging
+                  |       +--> API + H2 persistente
+                  |
+                  +--> produção: porta 8081, projeto ecoflux-production
+                          +--> API + H2 persistente
 ```
+
+Na mesma VM, os ambientes usam diretórios, nomes de projeto Compose, containers, volumes e portas diferentes. Isso atende à separação operacional exigida para a demonstração; uma separação de VMs pode ser adotada se a infraestrutura estiver disponível.
 
 ## 3. Pipeline
 
-O workflow `.github/workflows/ci-cd.yml` executa as seguintes etapas:
+O workflow `.github/workflows/ci-cd.yml` executa:
 
 1. Checkout do código.
 2. Configuração do Java 17.
-3. Execução dos testes com `./mvnw -B test`.
+3. Execução de `./mvnw -B test`.
 4. Geração do JAR.
-5. Construção e publicação da imagem no GitHub Container Registry em pushes para `main` ou em tags de versão.
-6. Deploy de staging após push na branch `main`.
-7. Deploy de produção após uma tag no formato `vX.Y.Z`.
+5. Construção e publicação da imagem no GitHub Container Registry em pushes para `main` ou tags de versão.
+6. Deploy de staging após push na branch `main`, quando `ENABLE_STAGING=true`.
+7. Deploy de produção após uma tag `vX.Y.Z`, quando `ENABLE_PRODUCTION=true`.
 
-A separação entre staging e produção é feita pelos ambientes do GitHub Actions. Cada ambiente deve ter seus próprios secrets e pode possuir regras de aprovação configuradas no repositório.
+Os jobs de deploy começam desativados para impedir falhas antes da criação da VM e dos secrets.
 
 ## 4. Testes automatizados
 
-O pipeline não depende de um Oracle externo para validar o código. O perfil `test` usa H2 em memória e desabilita as migrações Flyway específicas do Oracle.
+O perfil `test` usa H2 em memória, carrega o contexto Spring e executa os testes das regras de negócio. Após a migração para H2 persistente, a validação local executou 5 testes, sem falhas ou erros.
 
-Foram cobertos:
-
-- carregamento do contexto Spring;
-- aumento do inventário ao registrar descarte;
-- geração de alerta ao atingir 85% da capacidade;
-- bloqueio de descarte acima da capacidade;
-- bloqueio de descarte em ponto inativo;
-- redução do inventário após coleta;
-- resolução dos alertas pendentes após coleta.
-
-Comando usado:
-
-```bash
+```text
 ./mvnw -B test
+
+Resultado: BUILD SUCCESS — 5 testes executados, 0 falhas e 0 erros
 ```
 
 ## 5. Docker
 
-O Dockerfile usa build em duas etapas:
+O Dockerfile usa build em duas etapas. A primeira utiliza Maven com Java 17 para compilar o JAR. A segunda utiliza uma imagem JRE enxuta, executa com usuário sem privilégios e expõe a porta 8080.
 
-```dockerfile
-FROM maven:3.9.9-eclipse-temurin-17 AS build
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-COPY src ./src
-RUN mvn clean package -DskipTests -B
+O Compose executa a API, monta o volume `ecoflux-data` em `/data` e conecta o serviço à rede `ecoflux-network`. O H2 cria o arquivo do banco dentro do volume.
 
-FROM eclipse-temurin:17-jre-alpine
-WORKDIR /app
-RUN addgroup -S ecoflux && adduser -S ecoflux -G ecoflux
-COPY --from=build /app/target/ecoflux-0.0.1-SNAPSHOT.jar app.jar
-USER ecoflux
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
-
-A imagem final não contém o código-fonte nem roda como root. As credenciais são fornecidas pelo ambiente, não pelo Dockerfile.
-
-## 6. Docker Compose
-
-O Compose cria dois serviços:
-
-- `oracle-db`: Oracle XE com healthcheck e volume `oracle-data`;
-- `ecoflux-app`: API Spring Boot, dependente da saúde do banco.
-
-A comunicação ocorre pela rede `ecoflux-network`. As portas e os valores de ambiente podem ser alterados no `.env` a partir do modelo `.env.example`.
-
-Comandos:
+## 6. Execução local
 
 ```bash
 cp .env.example .env
-# editar .env
-
+# editar DB_PASSWORD e JWT_SECRET
 docker compose up --build -d
 docker compose ps
-docker compose logs -f ecoflux-app
+curl http://localhost:8080/pontos-coleta
 docker compose down
 ```
 
-## 7. Deploy remoto
+Para apagar o banco local junto com o Compose:
 
-Para o deploy remoto, o servidor precisa ter Docker Engine, Docker Compose, acesso de saída ao GHCR e uma chave SSH configurada no GitHub.
+```bash
+docker compose down -v
+```
 
-Secrets esperados nos ambientes `staging` e `production`:
+## 7. Deploy no Azure
 
-- `HOST`
-- `USER`
-- `SSH_KEY`
-- `APP_DIR`
-- `APP_PORT` — `8080` em staging e `8081` em produção na mesma VM
-- `ORACLE_PORT` — `1521` em staging e `1522` em produção na mesma VM
-- `COMPOSE_PROJECT_NAME` — nome diferente para cada ambiente
-- `ORACLE_SYS_PASSWORD`
-- `ORACLE_USER`
-- `ORACLE_PASSWORD`
-- `JWT_SECRET`
-- `GHCR_READ_TOKEN`
+A VM deve usar Ubuntu x64 e Docker Engine com Docker Compose. Para uma demonstração de baixo custo, staging e produção podem compartilhar a VM, usando:
 
-O job remoto baixa o `docker-compose.yml` da mesma revisão publicada, cria o `.env` protegido e executa `docker compose pull` seguido de `docker compose up -d --no-build`.
+- staging: `/opt/ecoflux-staging`, porta `8080`, projeto `ecoflux-staging`;
+- produção: `/opt/ecoflux-production`, porta `8081`, projeto `ecoflux-production`.
 
-Para que o primeiro push não tente acessar servidores ainda não configurados, os jobs de deploy dependem das variáveis `ENABLE_STAGING=true` e `ENABLE_PRODUCTION=true`, cadastradas nos respectivos ambientes do GitHub. Sem essas variáveis, build, testes e publicação da imagem continuam funcionando, mas os deploys são pulados.
+Secrets esperados nos ambientes do GitHub:
+
+```text
+HOST
+USER
+SSH_KEY
+APP_DIR
+APP_PORT
+COMPOSE_PROJECT_NAME
+DB_USER
+DB_PASSWORD
+JWT_SECRET
+GHCR_READ_TOKEN
+```
+
+As variáveis de ativação são:
+
+```text
+ENABLE_STAGING=true
+ENABLE_PRODUCTION=true
+```
+
+Não devem ser usados prints simulados. Os campos abaixo devem ser preenchidos somente com evidências reais:
 
 ## 8. Evidências obrigatórias
 
-Esta seção deve receber as evidências reais depois que o repositório e os servidores forem configurados. Não devem ser utilizados prints simulados.
-
 ### 8.1 Build e testes
 
-- URL da execução do GitHub Actions: `PREENCHER após publicar o repositório`
-- Validação local: `BUILD SUCCESS`
-- Resultado dos testes locais: `5 testes executados, 0 falhas, 0 erros`
-- Resultado do job `Build e testes`: `PREENCHER após a primeira execução no GitHub Actions`
+- URL da execução do GitHub Actions: `PREENCHER`
+- Resultado do job `Build e testes`: `PREENCHER`
+- Resultado dos testes após a migração: `PREENCHER`
 
 ### 8.2 Imagem Docker
 
-- URL da imagem no GHCR: `PREENCHER`
+- URL ou nome da imagem no GHCR: `PREENCHER`
 - Tag utilizada: `PREENCHER`
 
 ### 8.3 Staging
@@ -157,7 +132,7 @@ Esta seção deve receber as evidências reais depois que o repositório e os se
 - URL ou IP do ambiente: `PREENCHER`
 - URL da execução do deploy: `PREENCHER`
 - Endpoint validado: `PREENCHER`
-- Print do job e do ambiente: inserir aqui
+- Print do job e do ambiente: inserir evidência real
 
 ### 8.4 Produção
 
@@ -165,35 +140,33 @@ Esta seção deve receber as evidências reais depois que o repositório e os se
 - Tag de release: `PREENCHER`
 - URL da execução do deploy: `PREENCHER`
 - Endpoint validado: `PREENCHER`
-- Print do job e do ambiente: inserir aqui
+- Print do job e do ambiente: inserir evidência real
 
-## 9. Dificuldades e decisões
+## 9. Decisões técnicas
 
-### Oracle no teste automatizado
+### Banco de dados
 
-A aplicação usa Oracle em produção, mas depender de um banco externo tornaria o pipeline instável. Por isso, o perfil de testes usa H2 em memória e mantém o Oracle para a execução integrada via Compose.
-
-### Segredos no repositório
-
-As senhas que existiam nos arquivos iniciais foram retiradas do Dockerfile e do Compose. O repositório contém somente `.env.example`; os valores reais devem ficar nos secrets do GitHub ou no `.env` local.
+O enunciado não exige Oracle. A implementação utiliza H2 persistente para reduzir a infraestrutura necessária à demonstração e manter o Compose com banco, volume e rede. O H2 não deve ser tratado como escolha para alta escala, mas é suficiente para o escopo acadêmico e para demonstrar o ciclo DevOps.
 
 ### Dois ambientes
 
-Staging e produção possuem jobs separados. O staging acompanha a branch `main`; a produção é disparada por tag de versão e pode ser protegida com aprovação no GitHub.
+Staging e produção possuem jobs separados, secrets separados e projetos Compose separados. Na demonstração econômica, os dois ambientes são executados na mesma VM em portas e diretórios diferentes.
 
-## 10. Checklist de entrega
+### Segredos
+
+O repositório contém apenas `.env.example`. Senhas, JWT, chave SSH e token do GHCR ficam nos secrets do GitHub.
+
+## 10. Checklist
 
 | Item | Situação |
 |---|---|
 | Projeto compactado em `.zip` | Preparado |
 | Dockerfile funcional | Preparado |
-| `docker-compose.yml` | Preparado |
+| `docker-compose.yml` com volume, variáveis e rede | Preparado |
 | Pipeline de build | Preparado |
 | Pipeline de testes | Preparado |
-| Deploy automatizado em staging | Configurado; requer servidor e secrets |
-| Deploy automatizado em produção | Configurado; requer servidor e secrets |
+| Deploy automatizado em staging | Configurado; requer VM e secrets |
+| Deploy automatizado em produção | Configurado; requer VM e secrets |
 | README.md | Preparado |
 | Documentação técnica | Este documento |
 | Evidências reais de staging e produção | Pendente de execução |
-
-> A configuração de CI/CD está pronta para execução, mas staging e produção não são declarados como concluídos sem servidores, credenciais e URLs verificáveis.

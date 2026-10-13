@@ -1,5 +1,4 @@
--- Inserção do usuário administrador padrão
--- Senha: admin123 (BCrypt hash)
+-- Senha do administrador: admin123
 INSERT INTO tb_usuario (login, senha, role)
 VALUES (
     'admin',
@@ -7,8 +6,7 @@ VALUES (
     'ADMIN'
 );
 
--- Inserção de usuário operador padrão
--- Senha: operador123 (BCrypt hash)
+-- Senha do operador: operador123
 INSERT INTO tb_usuario (login, senha, role)
 VALUES (
     'operador',

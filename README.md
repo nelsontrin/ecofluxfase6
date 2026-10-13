@@ -7,7 +7,7 @@ O EcoFlux é uma API REST para apoiar o controle do ciclo de resíduos: pontos d
 - Java 17
 - Spring Boot 3.4.5
 - Spring Web, Spring Data JPA, Spring Security e Bean Validation
-- Oracle Database XE 21c
+- H2 persistente em arquivo
 - Flyway para migrações
 - JWT para autenticação
 - Maven
@@ -19,8 +19,8 @@ O EcoFlux é uma API REST para apoiar o controle do ciclo de resíduos: pontos d
 ### Pré-requisitos
 
 - Docker Engine com Docker Compose
-- Portas 8080 e 1521 disponíveis
-- Aproximadamente 2 minutos para a inicialização inicial do Oracle XE
+- Portas 8080 disponíveis
+- Pelo menos 2 GB de memória disponíveis para o Docker
 
 ### Configuração
 
@@ -30,9 +30,9 @@ O EcoFlux é uma API REST para apoiar o controle do ciclo de resíduos: pontos d
    cp .env.example .env
    ```
 
-2. Edite `.env` e defina as senhas e a chave JWT. O arquivo `.env` não deve ser versionado.
+2. Edite `.env` e troque `DB_PASSWORD` e `JWT_SECRET`. O arquivo `.env` não deve ser versionado.
 
-3. Suba os serviços:
+3. Suba a aplicação:
 
    ```bash
    docker compose up --build -d
@@ -44,29 +44,35 @@ O EcoFlux é uma API REST para apoiar o controle do ciclo de resíduos: pontos d
    docker compose logs -f ecoflux-app
    ```
 
-5. Pare os serviços quando terminar:
+5. Consulte a API:
+
+   ```bash
+   curl http://localhost:8080/pontos-coleta
+   ```
+
+6. Pare os serviços quando terminar:
 
    ```bash
    docker compose down
    ```
 
-Para remover também o volume persistente do Oracle, use `docker compose down -v`. Essa ação apaga os dados locais do banco.
+O banco H2 é armazenado em um volume Docker chamado `ecoflux-data`. Para remover também os dados locais, use `docker compose down -v`.
 
 ## Execução sem Docker
 
-A aplicação espera um Oracle disponível e as variáveis abaixo:
+A aplicação usa H2 persistente no diretório `/data` por padrão. Para executar localmente, defina um caminho gravável:
 
 ```bash
-export ORACLE_URL=jdbc:oracle:thin:@localhost:1521/XEPDB1
-export ORACLE_USER=ecoflux
-export ORACLE_PASSWORD=senha-local
+export DB_URL='jdbc:h2:file:./data/ecoflux-db;DB_CLOSE_ON_EXIT=FALSE'
+export DB_USER=sa
+export DB_PASSWORD=senha-local
 export JWT_SECRET=chave-local
 ./mvnw spring-boot:run
 ```
 
 ## Testes
 
-Os testes do pipeline usam um perfil `test` com H2 em memória. Assim, o build e os testes não dependem de um Oracle externo.
+Os testes usam um perfil `test` com H2 em memória e não dependem de um banco externo:
 
 ```bash
 ./mvnw test
@@ -80,8 +86,10 @@ O workflow está em `.github/workflows/ci-cd.yml` e possui quatro partes:
 
 1. **Build e testes:** configura o Java 17, executa `./mvnw test`, gera o JAR e publica o artefato.
 2. **Imagem:** em pushes para `main` e tags `v*.*.*`, constrói a imagem Docker e publica no GitHub Container Registry.
-3. **Staging:** após um push na `main`, conecta por SSH ao servidor de staging, atualiza o Compose, baixa a imagem e reinicia os serviços.
-4. **Produção:** após uma tag de versão, repete o processo usando o ambiente protegido `production` do GitHub.
+3. **Staging:** após um push na `main`, conecta por SSH à VM, atualiza o Compose, baixa a imagem e inicia a aplicação na porta configurada.
+4. **Produção:** após uma tag de versão, repete o processo usando o ambiente protegido `production` e outra pasta/porta na mesma VM.
+
+Os deploys permanecem desativados até que `ENABLE_STAGING=true` e `ENABLE_PRODUCTION=true` sejam cadastrados como variáveis dos ambientes do GitHub.
 
 ### Secrets necessários no GitHub
 
@@ -89,29 +97,23 @@ Os ambientes `staging` e `production` devem possuir os secrets abaixo:
 
 | Secret | Uso |
 |---|---|
-| `HOST` | Endereço do servidor remoto |
-| `USER` | Usuário SSH |
-| `SSH_KEY` | Chave privada do usuário de deploy |
-| `APP_DIR` | Diretório do Compose no servidor |
-| `APP_PORT` | Porta pública da API, por exemplo `8080` em staging e `8081` em produção |
-| `ORACLE_PORT` | Porta local do Oracle, por exemplo `1521` em staging e `1522` em produção |
-| `COMPOSE_PROJECT_NAME` | Nome isolado do Compose, por exemplo `ecoflux-staging` ou `ecoflux-production` |
-| `ORACLE_SYS_PASSWORD` | Senha administrativa do Oracle XE |
-| `ORACLE_USER` | Usuário da aplicação no Oracle |
-| `ORACLE_PASSWORD` | Senha do usuário da aplicação |
+| `HOST` | IP público da VM Azure |
+| `USER` | Usuário SSH, por exemplo `azureuser` |
+| `SSH_KEY` | Conteúdo da chave privada SSH |
+| `APP_DIR` | `/opt/ecoflux-staging` ou `/opt/ecoflux-production` |
+| `APP_PORT` | `8080` em staging e `8081` em produção |
+| `COMPOSE_PROJECT_NAME` | `ecoflux-staging` ou `ecoflux-production` |
+| `DB_USER` | Usuário H2, normalmente `sa` |
+| `DB_PASSWORD` | Senha do banco H2 |
 | `JWT_SECRET` | Chave de assinatura dos tokens |
-| `GHCR_READ_TOKEN` | Token de leitura do GitHub Container Registry no servidor |
+| `GHCR_READ_TOKEN` | Token de leitura do GitHub Container Registry |
 
-Os valores são diferentes em staging e produção. Não coloque credenciais reais no repositório.
+Os valores de banco e JWT devem ser diferentes entre os ambientes. Não coloque credenciais reais no repositório.
 
-Para evitar falha no primeiro push, os deploys começam desativados. Depois de cadastrar
-os secrets e testar os servidores, crie estas variáveis nos ambientes correspondentes:
+### Variáveis dos ambientes
 
-- `ENABLE_STAGING=true` no ambiente `staging`;
-- `ENABLE_PRODUCTION=true` no ambiente `production`.
-
-Enquanto essas variáveis não existirem com o valor `true`, o workflow executará build,
-testes e publicação da imagem, mas pulará os jobs de deploy.
+- No ambiente `staging`, crie `ENABLE_STAGING=true`.
+- No ambiente `production`, crie `ENABLE_PRODUCTION=true`.
 
 ## Containerização
 
@@ -120,10 +122,7 @@ O `Dockerfile` usa duas etapas:
 - `maven:3.9.9-eclipse-temurin-17` compila o projeto e gera o JAR;
 - `eclipse-temurin:17-jre-alpine` executa somente o artefato final com um usuário sem privilégios de administrador.
 
-O `docker-compose.yml` orquestra:
-
-- `oracle-db`, com Oracle XE, healthcheck e volume `oracle-data`;
-- `ecoflux-app`, com a API, dependência condicional da saúde do banco, rede privada e variáveis de ambiente.
+O `docker-compose.yml` orquestra a API, o volume persistente do H2 e a rede privada `ecoflux-network`. O projeto Compose é diferente em staging e produção para manter containers e volumes isolados na mesma VM.
 
 ## API e autenticação
 
@@ -167,15 +166,16 @@ Rotas principais:
 
 ## Evidências de execução
 
-Os prints do pipeline e dos ambientes devem ser adicionados à documentação depois da execução no repositório e nos servidores escolhidos. O pipeline foi preparado para produzir:
+Os prints e links dos pipelines e ambientes devem ser adicionados à documentação depois da execução real:
 
 - resultado do job `Build e testes`;
 - imagem publicada no GHCR;
-- logs dos jobs `Deploy em staging` e `Deploy em produção`;
-- resposta do endpoint `/pontos-coleta` nos dois ambientes;
-- saída de `docker compose ps` nos dois servidores.
+- logs do deploy em staging;
+- logs do deploy em produção;
+- resposta de `/pontos-coleta` nas duas portas;
+- saída de `docker compose ps` nos dois diretórios.
 
-Não são incluídos prints fictícios. A evidência deve corresponder às execuções reais do GitHub Actions.
+Não são incluídos prints fictícios.
 
 ## Integrantes
 
@@ -191,10 +191,10 @@ Não são incluídos prints fictícios. A evidência deve corresponder às execu
 |---|---|
 | Projeto compactado com estrutura organizada | Preparado |
 | Dockerfile funcional | Preparado |
-| Docker Compose com serviço da aplicação e banco | Preparado |
+| Docker Compose com serviço da aplicação e banco persistente | Preparado |
 | Pipeline com etapas de build e testes | Preparado |
-| Pipeline com deploy parametrizado para staging | Requer secrets e servidor |
-| Pipeline com deploy parametrizado para produção | Requer secrets e servidor |
+| Pipeline com deploy parametrizado para staging | Requer VM e secrets |
+| Pipeline com deploy parametrizado para produção | Requer VM e secrets |
 | README com instruções | Preparado |
 | Documentação técnica | Preparada com campos de evidência |
-| Deploy executado em staging e produção | Pendente de servidores e credenciais |
+| Deploy executado em staging e produção | Pendente de execução real |

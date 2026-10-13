@@ -1,24 +1,4 @@
 services:
-  oracle-db:
-    image: gvenzl/oracle-xe:21-slim-faststart
-    container_name: ${COMPOSE_PROJECT_NAME:-ecoflux}-oracle
-    environment:
-      ORACLE_PASSWORD: ${ORACLE_SYS_PASSWORD:?Defina ORACLE_SYS_PASSWORD no arquivo .env}
-      APP_USER: ${ORACLE_USER:-ecoflux}
-      APP_USER_PASSWORD: ${ORACLE_PASSWORD:?Defina ORACLE_PASSWORD no arquivo .env}
-    ports:
-      - "127.0.0.1:${ORACLE_PORT:-1521}:1521"
-    volumes:
-      - oracle-data:/opt/oracle/oradata
-    healthcheck:
-      test: ["CMD", "healthcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
-    networks:
-      - ecoflux-network
-
   ecoflux-app:
     image: ${ECOFLUX_IMAGE:-ecoflux:local}
     build:
@@ -28,20 +8,18 @@ services:
     ports:
       - "${APP_PORT:-8080}:8080"
     environment:
-      ORACLE_URL: jdbc:oracle:thin:@oracle-db:1521/XEPDB1
-      ORACLE_USER: ${ORACLE_USER:-ecoflux}
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Defina ORACLE_PASSWORD no arquivo .env}
+      DB_URL: jdbc:h2:file:/data/ecoflux-db;DB_CLOSE_ON_EXIT=FALSE
+      DB_USER: ${DB_USER:-sa}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo .env}
       JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no arquivo .env}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
-    depends_on:
-      oracle-db:
-        condition: service_healthy
+    volumes:
+      - ecoflux-data:/data
     networks:
       - ecoflux-network
     restart: on-failure
 
 volumes:
-  oracle-data:
+  ecoflux-data:
     driver: local
 
 networks:
