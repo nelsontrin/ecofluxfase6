@@ -123,6 +123,9 @@ Secrets esperados nos ambientes `staging` e `production`:
 - `USER`
 - `SSH_KEY`
 - `APP_DIR`
+- `APP_PORT` — `8080` em staging e `8081` em produção na mesma VM
+- `ORACLE_PORT` — `1521` em staging e `1522` em produção na mesma VM
+- `COMPOSE_PROJECT_NAME` — nome diferente para cada ambiente
 - `ORACLE_SYS_PASSWORD`
 - `ORACLE_USER`
 - `ORACLE_PASSWORD`

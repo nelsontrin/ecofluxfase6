@@ -93,6 +93,9 @@ Os ambientes `staging` e `production` devem possuir os secrets abaixo:
 | `USER` | Usuário SSH |
 | `SSH_KEY` | Chave privada do usuário de deploy |
 | `APP_DIR` | Diretório do Compose no servidor |
+| `APP_PORT` | Porta pública da API, por exemplo `8080` em staging e `8081` em produção |
+| `ORACLE_PORT` | Porta local do Oracle, por exemplo `1521` em staging e `1522` em produção |
+| `COMPOSE_PROJECT_NAME` | Nome isolado do Compose, por exemplo `ecoflux-staging` ou `ecoflux-production` |
 | `ORACLE_SYS_PASSWORD` | Senha administrativa do Oracle XE |
 | `ORACLE_USER` | Usuário da aplicação no Oracle |
 | `ORACLE_PASSWORD` | Senha do usuário da aplicação |
