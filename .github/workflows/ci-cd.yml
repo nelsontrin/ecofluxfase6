@@ -91,10 +91,6 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           ECOFLUX_IMAGE: ${{ needs.publish-image.outputs.image }}
-          APP_DIR: ${{ secrets.APP_DIR }}
-          APP_PORT: ${{ secrets.APP_PORT }}
-          COMPOSE_PROJECT_NAME: ${{ secrets.COMPOSE_PROJECT_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
@@ -102,11 +98,15 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: ECOFLUX_IMAGE,APP_DIR,APP_PORT,COMPOSE_PROJECT_NAME,DB_USER,DB_PASSWORD,JWT_SECRET,GITHUB_TOKEN
+          envs: ECOFLUX_IMAGE,DB_PASSWORD,JWT_SECRET,GITHUB_TOKEN
           script_stop: true
           script: |
             set -eu
             umask 077
+            APP_DIR='/home/azureuser/ecoflux-staging'
+            APP_PORT='8080'
+            COMPOSE_PROJECT_NAME='ecoflux-staging'
+            DB_USER='sa'
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
             curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.yml" -o docker-compose.yml
@@ -133,10 +133,6 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           ECOFLUX_IMAGE: ${{ needs.publish-image.outputs.image }}
-          APP_DIR: ${{ secrets.APP_DIR }}
-          APP_PORT: ${{ secrets.APP_PORT }}
-          COMPOSE_PROJECT_NAME: ${{ secrets.COMPOSE_PROJECT_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
@@ -144,11 +140,15 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: ECOFLUX_IMAGE,APP_DIR,APP_PORT,COMPOSE_PROJECT_NAME,DB_USER,DB_PASSWORD,JWT_SECRET,GITHUB_TOKEN
+          envs: ECOFLUX_IMAGE,DB_PASSWORD,JWT_SECRET,GITHUB_TOKEN
           script_stop: true
           script: |
             set -eu
             umask 077
+            APP_DIR='/home/azureuser/ecoflux-production'
+            APP_PORT='8081'
+            COMPOSE_PROJECT_NAME='ecoflux-production'
+            DB_USER='sa'
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
             curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.yml" -o docker-compose.yml
