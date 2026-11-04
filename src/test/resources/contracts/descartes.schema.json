@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": { "$ref": "#/definitions/descarte" },
+  "definitions": {
+    "ponto": {
+      "type": "object",
+      "required": ["id", "nome", "endereco", "capacidadeMaxima", "volumeAtual", "ativo"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 }, "nome": { "type": "string" }, "endereco": { "type": "string" },
+        "capacidadeMaxima": { "type": "number" }, "volumeAtual": { "type": "number" }, "ativo": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "descarte": {
+      "type": "object",
+      "required": ["id", "pontoColeta", "tipoResiduo", "volume", "reciclavel", "dataHora"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 }, "pontoColeta": { "$ref": "#/definitions/ponto" },
+        "tipoResiduo": { "type": "string", "minLength": 1 }, "volume": { "type": "number", "exclusiveMinimum": 0 },
+        "reciclavel": { "type": "boolean" }, "dataHora": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

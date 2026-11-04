@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["timestamp", "status", "error", "message"],
+  "properties": {
+    "timestamp": { "type": "string" },
+    "status": { "type": "integer", "const": 400 },
+    "error": { "type": "string", "const": "Validation Error" },
+    "message": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}
