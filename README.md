@@ -198,3 +198,16 @@ Não são incluídos prints fictícios.
 | README com instruções | Preparado |
 | Documentação técnica | Preparada com campos de evidência |
 | Deploy executado em staging e produção | Pendente de execução real |
+
+
+## Suíte BDD/API da atividade
+
+Além dos testes JUnit existentes, o projeto inclui cenários Cucumber/Gherkin para os 13 endpoints declarados nos controllers. Os cenários percorrem o servidor Spring Boot por HTTP, usam o perfil `test` com H2 em memória e limpam os dados operacionais entre cenários. As respostas JSON de sucesso e erro são validadas pelos contratos em `src/test/resources/contracts/`.
+
+Para executar a suíte completa e salvar o log, os relatórios Surefire e os relatórios Cucumber HTML/JSON:
+
+```bash
+./run-tests.sh
+```
+
+O mesmo conjunto é executado por `./mvnw -B test`, como configurado no workflow de CI. O script procura um JDK 17 automaticamente quando `JAVA_HOME` não estiver definido.

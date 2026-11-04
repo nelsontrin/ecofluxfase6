@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["id", "nome", "endereco", "capacidadeMaxima", "volumeAtual", "ativo"],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "nome": { "type": "string", "minLength": 1 },
+    "endereco": { "type": "string", "minLength": 1 },
+    "capacidadeMaxima": { "type": "number", "exclusiveMinimum": 0 },
+    "volumeAtual": { "type": "number", "minimum": 0 },
+    "ativo": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

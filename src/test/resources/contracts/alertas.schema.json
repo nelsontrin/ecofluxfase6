@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": { "$ref": "#/definitions/alerta" },
+  "definitions": {
+    "ponto": {
+      "type": "object",
+      "required": ["id", "nome", "endereco", "capacidadeMaxima", "volumeAtual", "ativo"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 }, "nome": { "type": "string" }, "endereco": { "type": "string" },
+        "capacidadeMaxima": { "type": "number" }, "volumeAtual": { "type": "number" }, "ativo": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "alerta": {
+      "type": "object",
+      "required": ["id", "pontoColeta", "mensagem", "nivel", "dataHora", "resolvido"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 }, "pontoColeta": { "$ref": "#/definitions/ponto" },
+        "mensagem": { "type": "string", "minLength": 1 }, "nivel": { "type": "string", "enum": ["MEDIO", "ALTO"] },
+        "dataHora": { "type": "string" }, "resolvido": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

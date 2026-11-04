@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": { "$ref": "#/definitions/coleta" },
+  "definitions": {
+    "ponto": {
+      "type": "object",
+      "required": ["id", "nome", "endereco", "capacidadeMaxima", "volumeAtual", "ativo"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 }, "nome": { "type": "string" }, "endereco": { "type": "string" },
+        "capacidadeMaxima": { "type": "number" }, "volumeAtual": { "type": "number" }, "ativo": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "coleta": {
+      "type": "object",
+      "required": ["id", "pontoColeta", "empresaResponsavel", "volumeColetado", "destinoFinal", "dataHora"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 }, "pontoColeta": { "$ref": "#/definitions/ponto" },
+        "empresaResponsavel": { "type": "string", "minLength": 1 }, "volumeColetado": { "type": "number", "exclusiveMinimum": 0 },
+        "destinoFinal": { "type": "string", "minLength": 1 }, "dataHora": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
